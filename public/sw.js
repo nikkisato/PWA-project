@@ -11,6 +11,5 @@ self.addEventListener('activate', (e) => {
 
 //Fetching for data?
 self.addEventListener('fetch', (e) => {
-	console.log('[Service Worker] Fetching Stuff....', e);
 	e.respondWith(fetch(e.request));
 });
