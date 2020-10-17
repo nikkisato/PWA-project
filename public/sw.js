@@ -1,4 +1,7 @@
-var CACHE_STATIC_NAME = 'static-v15';
+importScripts('/src/js/idb.js');
+importScripts('/src/js/utility.js');
+
+var CACHE_STATIC_NAME = 'static-v25';
 var CACHE_DYNAMIC_NAME = 'dynamic-v2';
 var STATIC_FILES = [
 	'/',
@@ -6,6 +9,7 @@ var STATIC_FILES = [
 	'/offline.html',
 	'/src/js/app.js',
 	'/src/js/feed.js',
+	'/src/js/idb.js',
 	'/src/js/promise.js',
 	'/src/js/fetch.js',
 	'/src/js/material.min.js',
@@ -13,7 +17,7 @@ var STATIC_FILES = [
 	'/src/css/feed.css',
 	'/src/images/main-image.jpg',
 	'https://fonts.googleapis.com/css?family=Roboto:400,700',
-	'https://fonts.googleapis.com/icon?family=Material+Icons',
+	//'https://fonts.googleapis.com/icon?family=Material+Icons',
 	'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css',
 ];
 
@@ -35,7 +39,6 @@ self.addEventListener('install', (e) => {
 		caches.open(CACHE_STATIC_NAME).then((cache) => {
 			console.log('[SERVICE WORKER] PRECACHING APP SHELL');
 			//2.input the url we want to fetch from
-
 			//4 add all file paths to precache
 			cache.addAll([STATIC_FILES]);
 		})
@@ -69,38 +72,57 @@ function isInArray(string, array) {
 	}
 }
 
-//Cache then network & dynamic caching
-self.addEventListener('fetch', (e) => {
-	var url = 'https://httpbin.org/get';
+//function isInArray(string, array) {
+//	var cachePath;
+//	if (string.indexOf(self.origin) === 0) {
+//		// request targets domain where we serve the page from (i.e. NOT a CDN)
+//		console.log('matched ', string);
+//		cachePath = string.substring(self.origin.length); // take the part of the URL AFTER the domain (e.g. after localhost:8080)
+//	} else {
+//		cachePath = string; // store the full request (for CDNs)
+//	}
+//	return array.indexOf(cachePath) > -1;
+//}
 
-	if (e.request.url.indexOf(url) > -1) {
-		e.respondWith(
-			caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-				return fetch(e.request).then((res) => {
-					//trimCache(CACHE_DYNAMIC_NAME, 3);
-					cache.put(e.request, res.clone());
-					return res;
-				});
+//Cache then network & dynamic caching
+self.addEventListener('fetch', function (event) {
+	var url = 'https://pwa-udemy-68dcb.firebaseio.com/posts';
+
+	if (event.request.url.indexOf(url) > -1) {
+		event.respondWith(
+			fetch(event.request).then(function (res) {
+				var clonedRes = res.clone();
+				clearAllData('posts')
+					.then(function () {
+						return clonedRes.json();
+					})
+					.then(function (data) {
+						for (var key in data) {
+							writeData('posts', data[key]);
+						}
+					});
+				return res;
 			})
 		);
-	} else if (isInArray(e.request.url, STATIC_FILES)) {
-		e.respondWith(caches.match(e.request));
+	} else if (isInArray(event.request.url, STATIC_FILES)) {
+		event.respondWith(caches.match(event.request));
 	} else {
-		e.respondWith(
-			caches.match(e.request).then((response) => {
+		event.respondWith(
+			caches.match(event.request).then(function (response) {
 				if (response) {
 					return response;
 				} else {
-					return fetch(e.request)
-						.then((res) => {
-							caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-								cache.put(e.request.url, res.clone());
+					return fetch(event.request)
+						.then(function (res) {
+							return caches.open(CACHE_DYNAMIC_NAME).then(function (cache) {
+								// trimCache(CACHE_DYNAMIC_NAME, 3);
+								cache.put(event.request.url, res.clone());
 								return res;
 							});
 						})
-						.catch((err) => {
-							return caches.open(CACHE_STATIC_NAME).then((cache) => {
-								if (e.request.headers.get('accept').includes('text/html')) {
+						.catch(function (err) {
+							return caches.open(CACHE_STATIC_NAME).then(function (cache) {
+								if (event.request.headers.get('accept').includes('text/html')) {
 									return cache.match('/offline.html');
 								}
 							});
@@ -110,6 +132,62 @@ self.addEventListener('fetch', (e) => {
 		);
 	}
 });
+
+//OLD CODE
+////Cache then network & dynamic caching
+//self.addEventListener('fetch', (e) => {
+//	var url = 'https://pwa-udemy-68dcb.firebaseio.com/posts';
+
+//	if (e.request.url.indexOf(url) > -1) {
+//		e.respondWith(
+//			fetch(e.request).then((res) => {
+//				var clonedRes = res.clone();
+//				clearAllData('posts')
+//					.then(() => {
+//						return clonedRes.json();
+//					})
+//					.then((data) => {
+//						for (var key in data) {
+//							writeData('posts', data[key]);
+//						}
+//					});
+//				return res;
+//			})
+//			//caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
+//			//return fetch(e.request).then((res) => {
+//			//trimCache(CACHE_DYNAMIC_NAME, 3);
+//			//cache.put(e.request, res.clone());
+//			//return res;
+//			//});
+//			//})
+//		);
+//	} else if (isInArray(e.request.url, STATIC_FILES)) {
+//		e.respondWith(caches.match(e.request));
+//	} else {
+//		e.respondWith(
+//			caches.match(e.request).then((response) => {
+//				if (response) {
+//					return response;
+//				} else {
+//					return fetch(e.request)
+//						.then((res) => {
+//							caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
+//								cache.put(e.request.url, res.clone());
+//								return res;
+//							});
+//						})
+//						.catch((err) => {
+//							return caches.open(CACHE_STATIC_NAME).then((cache) => {
+//								if (e.request.headers.get('accept').includes('text/html')) {
+//									return cache.match('/offline.html');
+//								}
+//							});
+//						});
+//				}
+//			})
+//		);
+//	}
+//});
 
 //self.addEventListener('fetch', (e) => {
 //	//3.responses with everything in the caches
