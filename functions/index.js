@@ -1,11 +1,10 @@
 var functions = require('firebase-functions');
 var admin = require('firebase-admin');
 var cors = require('cors')({ origin: true });
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
 
+var serviceAccount = require('./pwa-udemy-key.json');
 admin.initializeApp({
+	credential: admin.credential.cert(serviceAccount),
 	databaseURL: 'https://pwa-udemy-68dcb.firebaseio.com/',
 });
 exports.storePostData = functions.https.onRequest((request, response) => {
