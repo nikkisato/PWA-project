@@ -97,8 +97,7 @@ function updateUI(data) {
 		createCard(data[i]);
 	}
 }
-var url =
-	'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData';
+var url = 'https://pwa-udemy-68dcb.firebaseio.com/posts.json';
 var networkDataReceived = false;
 
 fetch(url)
@@ -142,20 +141,24 @@ if ('indexedDB' in window) {
 //	});
 
 function sendData() {
-	fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'application/json',
-		},
-		body: JSON.stringify({
-			id: new Date().toISOString(),
-			title: titleInput.value,
-			location: locationInput.value,
-			image:
-				'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-		}),
-	}).then((res) => {
+	fetch(
+		//'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
+		'https://pwa-udemy-68dcb.firebaseio.com/posts.json',
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+			},
+			body: JSON.stringify({
+				id: new Date().toISOString(),
+				title: titleInput.value,
+				location: locationInput.value,
+				image:
+					'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+			}),
+		}
+	).then((res) => {
 		console.log('Sent data', res);
 		updateUI();
 	});
@@ -180,7 +183,7 @@ form.addEventListener('submit', (e) => {
 			};
 			writeData('sync-posts', post)
 				.then(() => {
-					return sw.sync.register('sync-new-post');
+					return sw.sync.register('sync-new-posts');
 				})
 				.then(() => {
 					var snackbarContainer = document.querySelector('#confirmation-toast');

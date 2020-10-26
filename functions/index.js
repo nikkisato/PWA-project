@@ -8,7 +8,7 @@ admin.initializeApp({
 	databaseURL: 'https://pwa-udemy-68dcb.firebaseio.com/',
 });
 exports.storePostData = functions.https.onRequest((request, response) => {
-	cors(request, response, () => {
+	cors(request, response, function () {
 		admin
 			.database()
 			.ref('posts')
