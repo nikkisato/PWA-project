@@ -1,5 +1,8 @@
 var shareImageButton = document.querySelector('#share-image-button');
 var createPostArea = document.querySelector('#create-post');
+var form = document.querySelector('form');
+var titleInput = document.querySelector('#title');
+var locationInput = document.querySelector('#location');
 var closeCreatePostModalButton = document.querySelector(
 	'#close-create-post-modal-btn'
 );
@@ -136,3 +139,58 @@ if ('indexedDB' in window) {
 //		}
 //		console.log('from cache', data);
 //	});
+
+function sendData() {
+	fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'application/json',
+		},
+		body: JSON.stringify({
+			id: new Date().toISOString(),
+			title: titleInput.value,
+			location: locationInput.value,
+			image:
+				'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+		}),
+	}).then((res) => {
+		console.log('Sent data', res);
+		updateUI();
+	});
+}
+
+form.addEventListener('submit', (e) => {
+	e.preventDefault();
+
+	if (titleInput.value.trim() === '' || locationInput.value.trim() === '') {
+		alert('Please enter valid data!');
+		return;
+	}
+
+	closeCreatePostModal();
+
+	if ('serviceWorker' in navigator && 'SyncManager' in window) {
+		navigator.serviceWorker.ready.then((sw) => {
+			var post = {
+				id: new Date().toISOString(),
+				title: titleInput.value,
+				location: locationInput.value,
+			};
+			writeData('sync-posts', post)
+				.then(() => {
+					return sw.sync.register('sync-new-post');
+				})
+				.then(() => {
+					var snackbarContainer = document.querySelector('#confirmation-toast');
+					var data = { message: 'Your Post was saved for Syncing! ' };
+					snackbarContainer.MaterialSnackbar.showSnackbar(data);
+				})
+				.catch((err) => {
+					console.log(err);
+				});
+		});
+	} else {
+		sendData();
+	}
+});

@@ -1,7 +1,7 @@
 importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
-var CACHE_STATIC_NAME = 'static-v26';
+var CACHE_STATIC_NAME = 'static-v27';
 var CACHE_DYNAMIC_NAME = 'dynamic-v2';
 var STATIC_FILES = [
 	'/',
@@ -17,7 +17,7 @@ var STATIC_FILES = [
 	'/src/css/feed.css',
 	'/src/images/main-image.jpg',
 	'https://fonts.googleapis.com/css?family=Roboto:400,700',
-	//'https://fonts.googleapis.com/icon?family=Material+Icons',
+	'https://fonts.googleapis.com/icon?family=Material+Icons',
 	'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css',
 ];
 
@@ -34,12 +34,9 @@ var STATIC_FILES = [
 //Service worker Installing
 self.addEventListener('install', (e) => {
 	console.log('[Service Worker] Installing Service Worker....', e);
-	//1. opens the caches
 	e.waitUntil(
 		caches.open(CACHE_STATIC_NAME).then((cache) => {
 			console.log('[SERVICE WORKER] PRECACHING APP SHELL');
-			//2.input the url we want to fetch from
-			//4 add all file paths to precache
 			cache.addAll([STATIC_FILES]);
 		})
 	);
@@ -48,7 +45,7 @@ self.addEventListener('install', (e) => {
 //Service worker activating
 self.addEventListener('activate', (e) => {
 	console.log('[Service Worker] Activating Service Worker....', e);
-	//5 clean up cache
+
 	e.waitUntil(
 		caches.keys().then((keyList) => {
 			return Promise.all(
@@ -64,39 +61,39 @@ self.addEventListener('activate', (e) => {
 	return self.clients.claim();
 });
 
-function isInArray(string, array) {
-	for (var i = 0; i < array.length; i++) {
-		if (array[i] === string) {
-			return true;
-		}
-	}
-}
-
 //function isInArray(string, array) {
-//	var cachePath;
-//	if (string.indexOf(self.origin) === 0) {
-//		// request targets domain where we serve the page from (i.e. NOT a CDN)
-//		console.log('matched ', string);
-//		cachePath = string.substring(self.origin.length); // take the part of the URL AFTER the domain (e.g. after localhost:8080)
-//	} else {
-//		cachePath = string; // store the full request (for CDNs)
+//	for (var i = 0; i < array.length; i++) {
+//		if (array[i] === string) {
+//			return true;
+//		}
 //	}
-//	return array.indexOf(cachePath) > -1;
 //}
 
+function isInArray(string, array) {
+	var cachePath;
+	if (string.indexOf(self.origin) === 0) {
+		// request targets domain where we serve the page from (i.e. NOT a CDN)
+		console.log('matched ', string);
+		cachePath = string.substring(self.origin.length); // take the part of the URL AFTER the domain (e.g. after localhost:8080)
+	} else {
+		cachePath = string; // store the full request (for CDNs)
+	}
+	return array.indexOf(cachePath) > -1;
+}
+
 //Cache then network & dynamic caching
-self.addEventListener('fetch', function (event) {
+self.addEventListener('fetch', (event) => {
 	var url = 'https://pwa-udemy-68dcb.firebaseio.com/posts';
 
 	if (event.request.url.indexOf(url) > -1) {
 		event.respondWith(
-			fetch(event.request).then(function (res) {
+			fetch(event.request).then((res) => {
 				var clonedRes = res.clone();
 				clearAllData('posts')
-					.then(function () {
+					.then(() => {
 						return clonedRes.json();
 					})
-					.then(function (data) {
+					.then((data) => {
 						for (var key in data) {
 							writeData('posts', data[key]);
 						}
@@ -105,23 +102,26 @@ self.addEventListener('fetch', function (event) {
 			})
 		);
 	} else if (isInArray(event.request.url, STATIC_FILES)) {
-		event.respondWith(caches.match(event.request));
+		event.respondWith(
+			fetch(event.request).catch(() => {
+				return caches.match(event.request);
+			})
+		);
 	} else {
 		event.respondWith(
-			caches.match(event.request).then(function (response) {
+			caches.match(event.request).then((response) => {
 				if (response) {
 					return response;
 				} else {
 					return fetch(event.request)
-						.then(function (res) {
-							return caches.open(CACHE_DYNAMIC_NAME).then(function (cache) {
-								// trimCache(CACHE_DYNAMIC_NAME, 3);
+						.then((res) => {
+							return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
 								cache.put(event.request.url, res.clone());
 								return res;
 							});
 						})
-						.catch(function (err) {
-							return caches.open(CACHE_STATIC_NAME).then(function (cache) {
+						.catch((err) => {
+							return caches.open(CACHE_STATIC_NAME).then((cache) => {
 								if (event.request.headers.get('accept').includes('text/html')) {
 									return cache.match('/offline.html');
 								}
@@ -132,6 +132,79 @@ self.addEventListener('fetch', function (event) {
 		);
 	}
 });
+
+self.addEventListener('sync', (e) => {
+	console.log('[Service Worker] Background syncing', e);
+	if (e.tag === 'sync-new-posts') {
+		console.log('[Service Worker] Syncing new Posts');
+		e.waitUntil(
+			readAllData('sync-posts').then((data) => {
+				for (var dt of data) {
+					fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+						},
+						body: JSON.stringify({
+							id: dt.id,
+							title: dt.title,
+							location: dt.location,
+							image:
+								'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+						}),
+					})
+						.then((res) => {
+							console.log('Sent data', res);
+							if (res.ok) {
+								deleteItemFromData('sync-posts', dt.id); // Isn't working correctly!
+							}
+						})
+						.catch((err) => {
+							console.log('Error while sending data', err);
+						});
+				}
+			})
+		);
+	}
+});
+
+//self.addEventListener('sync', (e) => {
+//	console.log('[SERVICE WORKER] Background syncing', e);
+
+//	if (e.tag === 'sync-new-posts') {
+//		console.log('[SERVICE WORKER] Syncing new Posts');
+//		e.waitUntil(
+//			readAllData('sync-posts').then((data) => {
+//				for (var dt of data) {
+//					fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
+//						method: 'POST',
+//						headers: {
+//							'Content-Type': 'application/json',
+//							Accept: 'application/json',
+//						},
+//						body: JSON.stringify({
+//							id: dt.id,
+//							title: dt.title,
+//							location: dt.location,
+//							image:
+//								'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+//						}),
+//					})
+//						.then((res) => {
+//							console.log('Sent data', res);
+//							if (res.ok) {
+//								deleteItemFromData('sync-posts', dt.id);
+//							}
+//						})
+//						.catch((err) => {
+//							console.log('Error while sending data', err);
+//						});
+//				}
+//			})
+//		);
+//	}
+//});
 
 //OLD CODE
 ////Cache then network & dynamic caching
