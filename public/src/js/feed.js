@@ -97,7 +97,8 @@ function updateUI(data) {
 		createCard(data[i]);
 	}
 }
-var url = 'https://pwa-udemy-68dcb.firebaseio.com/posts.json';
+var url =
+	'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData';
 var networkDataReceived = false;
 
 fetch(url)

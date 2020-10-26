@@ -1,7 +1,7 @@
 importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
-var CACHE_STATIC_NAME = 'static-v27';
+var CACHE_STATIC_NAME = 'static-v28';
 var CACHE_DYNAMIC_NAME = 'dynamic-v2';
 var STATIC_FILES = [
 	'/',
@@ -140,24 +140,29 @@ self.addEventListener('sync', (e) => {
 		e.waitUntil(
 			readAllData('sync-posts').then((data) => {
 				for (var dt of data) {
-					fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							Accept: 'application/json',
-						},
-						body: JSON.stringify({
-							id: dt.id,
-							title: dt.title,
-							location: dt.location,
-							image:
-								'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-						}),
-					})
+					fetch(
+						'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
+						{
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
+							},
+							body: JSON.stringify({
+								id: dt.id,
+								title: dt.title,
+								location: dt.location,
+								image:
+									'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+							}),
+						}
+					)
 						.then((res) => {
 							console.log('Sent data', res);
 							if (res.ok) {
-								deleteItemFromData('sync-posts', dt.id); // Isn't working correctly!
+								res.json().then((resData) => {
+									deleteItemFromData('sync-posts', resData.id);
+								});
 							}
 						})
 						.catch((err) => {
