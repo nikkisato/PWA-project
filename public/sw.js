@@ -174,6 +174,21 @@ self.addEventListener('sync', (e) => {
 	}
 });
 
+self.addEventListener('notificationclick', (e) => {
+	var notification = e.notification;
+	var action = e.action;
+	console.log(notification);
+	if (action === 'confirm') {
+		console.log('Confirm was chosen');
+		notification.close();
+	} else {
+		console.log(action);
+	}
+});
+
+self.addEventListener('notificationclose', (e) => {
+	console.log('Notification was closed', e);
+});
 //self.addEventListener('sync', (e) => {
 //	console.log('[SERVICE WORKER] Background syncing', e);
 
