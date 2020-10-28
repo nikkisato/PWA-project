@@ -140,21 +140,17 @@ self.addEventListener('sync', (e) => {
     e.waitUntil(
       readAllData('sync-posts').then((data) => {
         for (var dt of data) {
+          var postData = new FormData();
+          postData.append('id', dt.id);
+          postData.append('title', dt.title);
+          postData.append('location', dt.location);
+          postData.append('file', dt.picture, dt.id + '.png');
+
           fetch(
             'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
             {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-              },
-              body: JSON.stringify({
-                id: dt.id,
-                title: dt.title,
-                location: dt.location,
-                image:
-                  'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-              }),
+              body: postData,
             }
           )
             .then((res) => {

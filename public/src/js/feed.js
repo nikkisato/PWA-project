@@ -8,6 +8,7 @@ var canvasElement = document.querySelector('#canvas');
 var captureButton = document.querySelector('#capture-btn');
 var imagePicker = document.querySelector('#image-picker');
 var imagePickerArea = document.querySelector('#pick-image');
+var picture;
 var closeCreatePostModalButton = document.querySelector(
   '#close-create-post-modal-btn'
 );
@@ -57,6 +58,7 @@ captureButton.addEventListener('click', (event) => {
   videoPlayer.srcObject.getVideoTracks().forEach((track) => {
     track.stop();
   });
+  picture = dataURItoBlob(canvasElement.toDataURL());
 });
 
 function openCreatePostModal() {
@@ -196,22 +198,19 @@ if ('indexedDB' in window) {
 //	});
 
 function sendData() {
+  var id = new Date().toISOString();
+  var postData = new FormData();
+  postData.append('id', id);
+  postData.append('title', titleInput.title);
+  postData.append('location', locationInput.location);
+  postData.append('file', picture, id + '.png');
+
   fetch(
-    //'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
-    'https://pwa-udemy-68dcb.firebaseio.com/posts.json',
+    'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
+    //'https://pwa-udemy-68dcb.firebaseio.com/posts.json',
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        id: new Date().toISOString(),
-        title: titleInput.value,
-        location: locationInput.value,
-        image:
-          'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-      }),
+      body: postData,
     }
   ).then((res) => {
     console.log('Sent data', res);
@@ -235,6 +234,7 @@ form.addEventListener('submit', (e) => {
         id: new Date().toISOString(),
         title: titleInput.value,
         location: locationInput.value,
+        picture: picture,
       };
       writeData('sync-posts', post)
         .then(() => {
