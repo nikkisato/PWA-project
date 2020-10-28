@@ -183,12 +183,52 @@ self.addEventListener('notificationclick', (e) => {
     notification.close();
   } else {
     console.log(action);
+    e.waitUntil(
+      clients.matchAll().then((clis) => {
+        var client = clis.find((c) => {
+          return c.visibilityState === 'visible';
+        });
+        if (client !== undefined) {
+          client.navigate(notification.data.url);
+          client.focus();
+        } else {
+          clients.openWindow(notification.data.url);
+        }
+        notification.close();
+      })
+    );
   }
 });
 
 self.addEventListener('notificationclose', (e) => {
   console.log('Notification was closed', e);
 });
+
+self.addEventListener('push', (e) => {
+  console.log('Push Notification received', e);
+
+  var data = {
+    title: 'New!',
+    content: 'Something new happened!',
+    openUrl: '/',
+  };
+
+  if (e.data) {
+    data = JSON.parse(e.data.text());
+  }
+
+  var options = {
+    body: data.content,
+    icon: '/src/images/icons/app-icon-96x96.png',
+    badge: '/src/images/icons/app-icon-96x96.png',
+    data: {
+      url: data.openUrl,
+    },
+  };
+
+  e.waitUntil(self.registration.showNotification(data.title, options));
+});
+
 //self.addEventListener('sync', (e) => {
 //	console.log('[SERVICE WORKER] Background syncing', e);
 
