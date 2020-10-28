@@ -8,6 +8,10 @@ var canvasElement = document.querySelector('#canvas');
 var captureButton = document.querySelector('#capture-btn');
 var imagePicker = document.querySelector('#image-picker');
 var imagePickerArea = document.querySelector('#pick-image');
+var closeCreatePostModalButton = document.querySelector(
+  '#close-create-post-modal-btn'
+);
+var sharedMomentsArea = document.querySelector('#shared-moments');
 
 function initializeMedia() {
   if (!('mediaDevices' in navigator)) {
@@ -38,10 +42,22 @@ function initializeMedia() {
     });
 }
 
-var closeCreatePostModalButton = document.querySelector(
-  '#close-create-post-modal-btn'
-);
-var sharedMomentsArea = document.querySelector('#shared-moments');
+captureButton.addEventListener('click', (event) => {
+  canvasElement.style.display = 'block';
+  videoPlayer.style.display = 'none';
+  captureButton.style.display = 'none';
+  var context = canvasElement.getContext('2d');
+  context.drawImage(
+    videoPlayer,
+    0,
+    0,
+    canvas.width,
+    videoPlayer.videoHeight / (videoPlayer.videoWidth / canvas.width)
+  );
+  videoPlayer.srcObject.getVideoTracks().forEach((track) => {
+    track.stop();
+  });
+});
 
 function openCreatePostModal() {
   //createPostArea.style.display = 'block';
