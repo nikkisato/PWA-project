@@ -3,43 +3,66 @@ var admin = require('firebase-admin');
 var cors = require('cors')({ origin: true });
 var webpush = require('web-push');
 var privateVapidKey = process.env.PRIVATEVAPIDKEY;
-var formidable = require('formidable');
+var Busboy = require('busboy');
 var fs = require('fs');
 var UUID = require('uuid-v4');
+var os = require('os');
 
 var serviceAccount = require('./pwa-udemy-key.json');
 
-var gcConfig = {
+const { Storage } = require('@google-cloud/storage');
+
+const gcs = new Storage({
   projectId: 'pwa-udemy-68dcb',
   keyFilename: 'pwa-udemy-key.json',
-};
-
-var gcs = require('@google-cloud/storage')(config);
+});
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: 'https://pwa-udemy-68dcb.firebaseio.com/',
 });
-exports.storePostData = functions.https.onRequest((request, response) => {
-  cors(request, response, function () {
-    var uuid = UUID();
-    var formData = new formidable.IncomingForm();
-    formData.parse(request, (err, fields, files) => {
-      fs.rename(files.file.path, '/tmp/' + files.file.name);
-      var bucket = gcs.bucket('pwa-udemy-68dcb.appspot.com');
 
+exports.storePostData = functions.https.onRequest((request, response) => {
+  cors(request, response, () => {
+    var uuid = UUID();
+    var busboy = new Busboy({ headers: request.headers });
+    let upload;
+    const fields = {};
+
+    busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
+      console.log(
+        `File [${fieldname}] filename: ${filename}, encoding: ${encoding}, mimetype: ${mimetype}`
+      );
+      const filepath = path.join(os.tmpdir(), filename);
+      upload = { file: filepath, type: mimetype };
+      file.pipe(fs.createWriteStream(filepath));
+    });
+
+    busboy.on('field', function (
+      fieldname,
+      val,
+      fieldnameTruncated,
+      valTruncated,
+      encoding,
+      mimetype
+    ) {
+      fields[fieldname] = val;
+    });
+
+    busboy.on('finish', () => {
+      var bucket = gcs.bucket('pwa-udemy-68dcb.appspot.com');
       bucket.upload(
-        '/tmp/' + files.file.name,
+        upload.file,
         {
           uploadType: 'media',
           metadata: {
             metadata: {
-              contentType: files.file.type,
+              contentType: upload.type,
               firebaseStorageDownloadTokens: uuid,
             },
           },
         },
-        (err, file) => {
+        (err, uploadedFile) => {
           if (!err) {
             admin
               .database()
@@ -52,7 +75,7 @@ exports.storePostData = functions.https.onRequest((request, response) => {
                   'https://firebasestorage.googleapis.com/v0/b/' +
                   bucket.name +
                   '/o/' +
-                  encodeURIComponent(file.name) +
+                  encodeURIComponent(uploadedFile.name) +
                   '?alt=media&token=' +
                   uuid,
               })
@@ -103,5 +126,6 @@ exports.storePostData = functions.https.onRequest((request, response) => {
         }
       );
     });
+    busboy.end(request.rawBody);
   });
 });
