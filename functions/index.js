@@ -7,6 +7,7 @@ var Busboy = require('busboy');
 var fs = require('fs');
 var UUID = require('uuid-v4');
 var os = require('os');
+var path = require('path');
 
 var serviceAccount = require('./pwa-udemy-key.json');
 
@@ -17,6 +18,13 @@ const gcs = new Storage({
   keyFilename: 'pwa-udemy-key.json',
 });
 
+//var gcconfig = {
+//  projectId: 'pwa-udemy-68dcb',
+//  keyFilename: 'pwa-udemy-key.json',
+//};
+
+//var gcs = require('@google-cloud/storage')(gcconfig);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: 'https://pwa-udemy-68dcb.firebaseio.com/',
@@ -25,7 +33,7 @@ admin.initializeApp({
 exports.storePostData = functions.https.onRequest((request, response) => {
   cors(request, response, () => {
     var uuid = UUID();
-    var busboy = new Busboy({ headers: request.headers });
+    const busboy = new Busboy({ headers: request.headers });
     let upload;
     const fields = {};
 
@@ -38,16 +46,19 @@ exports.storePostData = functions.https.onRequest((request, response) => {
       file.pipe(fs.createWriteStream(filepath));
     });
 
-    busboy.on('field', function (
-      fieldname,
-      val,
-      fieldnameTruncated,
-      valTruncated,
-      encoding,
-      mimetype
-    ) {
-      fields[fieldname] = val;
-    });
+    busboy.on(
+      'field',
+      (
+        fieldname,
+        val,
+        fieldnameTruncated,
+        valTruncated,
+        encoding,
+        mimetype
+      ) => {
+        fields[fieldname] = val;
+      }
+    );
 
     busboy.on('finish', () => {
       var bucket = gcs.bucket('pwa-udemy-68dcb.appspot.com');

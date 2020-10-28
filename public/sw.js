@@ -1,13 +1,14 @@
 importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
-var CACHE_STATIC_NAME = 'static-v37';
-var CACHE_DYNAMIC_NAME = 'dynamic-v2';
+var CACHE_STATIC_NAME = 'static-v39';
+var CACHE_DYNAMIC_NAME = 'dynamic-v3';
 var STATIC_FILES = [
   '/',
   '/index.html',
   '/offline.html',
   '/src/js/app.js',
+  '/src/js.utility.js',
   '/src/js/feed.js',
   '/src/js/idb.js',
   '/src/js/promise.js',
@@ -20,16 +21,6 @@ var STATIC_FILES = [
   'https://fonts.googleapis.com/icon?family=Material+Icons',
   'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css',
 ];
-
-//function trimCache(cacheName, maxItems) {
-//	caches.open(cacheName).then((cache) => {
-//		cache.keys().then((keys) => {
-//			if (keys.length > maxItems) {
-//				cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
-//			}
-//		});
-//	});
-//}
 
 //Service worker Installing
 self.addEventListener('install', (e) => {
@@ -366,3 +357,13 @@ self.addEventListener('push', (e) => {
 //self.addEventListener('fetch', (e) => {
 //	e.respondWith(fetch(e.request));
 //});
+
+//function trimCache(cacheName, maxItems) {
+//	caches.open(cacheName).then((cache) => {
+//		cache.keys().then((keys) => {
+//			if (keys.length > maxItems) {
+//				cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
+//			}
+//		});
+//	});
+//}

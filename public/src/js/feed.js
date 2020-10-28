@@ -18,19 +18,22 @@ function initializeMedia() {
   if (!('mediaDevices' in navigator)) {
     navigator.mediaDevices = {};
   }
-  if (!(`getUserMedia` in navigator.mediaDevices)) {
+
+  if (!('getUserMedia' in navigator.mediaDevices)) {
     navigator.mediaDevices.getUserMedia = (constraints) => {
       var getUserMedia =
         navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
       if (!getUserMedia) {
-        return Promise.reject(new Error('getUserMedia is not Implemented'));
+        return Promise.reject(new Error('getUserMedia is not implemented!'));
       }
+
       return new Promise((resolve, reject) => {
         getUserMedia.call(navigator, constraints, resolve, reject);
       });
     };
   }
+
   navigator.mediaDevices
     .getUserMedia({ video: true })
     .then((stream) => {
@@ -39,10 +42,8 @@ function initializeMedia() {
     })
     .catch((err) => {
       imagePickerArea.style.display = 'block';
-      console.log(err);
     });
 }
-
 captureButton.addEventListener('click', (event) => {
   canvasElement.style.display = 'block';
   videoPlayer.style.display = 'none';
@@ -59,6 +60,10 @@ captureButton.addEventListener('click', (event) => {
     track.stop();
   });
   picture = dataURItoBlob(canvasElement.toDataURL());
+});
+
+imagePicker.addEventListener('change', (event) => {
+  picture = event.target.files[0];
 });
 
 function openCreatePostModal() {
@@ -86,16 +91,16 @@ function openCreatePostModal() {
 
     deferredPrompt = null;
   }
-
-  //how to unregister a service worker
-  //if ('serviceWorker' in navigator) {
-  //	navigator.serviceWorker.getRegistrations().then((registrations) => {
-  //		for (var i = 0; i < registrations.length; i++) {
-  //			registrations[i].unregister();
-  //		}
-  //	});
-  //}
 }
+
+//how to unregister a service worker
+//if ('serviceWorker' in navigator) {
+//	navigator.serviceWorker.getRegistrations().then((registrations) => {
+//		for (var i = 0; i < registrations.length; i++) {
+//			registrations[i].unregister();
+//		}
+//	});
+//}
 
 function closeCreatePostModal() {
   //createPostArea.style.display = 'none';
@@ -207,7 +212,6 @@ function sendData() {
 
   fetch(
     'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
-    //'https://pwa-udemy-68dcb.firebaseio.com/posts.json',
     {
       method: 'POST',
       body: postData,
