@@ -1,13 +1,14 @@
-importScripts('/src/js/idb.js');
+//importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
-var CACHE_STATIC_NAME = 'static-v32';
-var CACHE_DYNAMIC_NAME = 'dynamic-v2';
+var CACHE_STATIC_NAME = 'static-v48';
+var CACHE_DYNAMIC_NAME = 'dynamic-v3';
 var STATIC_FILES = [
   '/',
   '/index.html',
   '/offline.html',
   '/src/js/app.js',
+  '/src/js/utility.js',
   '/src/js/feed.js',
   '/src/js/idb.js',
   '/src/js/promise.js',
@@ -21,37 +22,26 @@ var STATIC_FILES = [
   'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css',
 ];
 
-//function trimCache(cacheName, maxItems) {
-//	caches.open(cacheName).then((cache) => {
-//		cache.keys().then((keys) => {
-//			if (keys.length > maxItems) {
-//				cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
-//			}
-//		});
-//	});
-//}
-
 //Service worker Installing
-self.addEventListener('install', (e) => {
-  console.log('[Service Worker] Installing Service Worker....', e);
-  e.waitUntil(
+self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installing Service Worker ...', event);
+  event.waitUntil(
     caches.open(CACHE_STATIC_NAME).then((cache) => {
-      console.log('[SERVICE WORKER] PRECACHING APP SHELL');
-      cache.addAll([STATIC_FILES]);
+      console.log('[Service Worker] Precaching App Shell');
+      cache.addAll(STATIC_FILES);
     })
   );
 });
 
-//Service worker activating
-self.addEventListener('activate', (e) => {
-  console.log('[Service Worker] Activating Service Worker....', e);
-
-  e.waitUntil(
+//Service worker Activate
+self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] ACTIVATING SERVICE WORKER ....', event);
+  event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_STATIC_NAME && key !== CACHE_DYNAMIC_NAME) {
-            console.log('[SERVICE WORKER] removing old cache.', key);
+            console.log('[Service Worker] REMOVING OLD CACHE.', key);
             return caches.delete(key);
           }
         })
@@ -60,14 +50,6 @@ self.addEventListener('activate', (e) => {
   );
   return self.clients.claim();
 });
-
-//function isInArray(string, array) {
-//	for (var i = 0; i < array.length; i++) {
-//		if (array[i] === string) {
-//			return true;
-//		}
-//	}
-//}
 
 function isInArray(string, array) {
   var cachePath;
@@ -98,12 +80,14 @@ self.addEventListener('fetch', (event) => {
               writeData('posts', data[key]);
             }
           });
+        console.log('REZZ', res);
         return res;
       })
     );
   } else if (isInArray(event.request.url, STATIC_FILES)) {
     event.respondWith(
       fetch(event.request).catch(() => {
+        console.log('event.request', event.request);
         return caches.match(event.request);
       })
     );
@@ -111,16 +95,23 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(event.request).then((response) => {
         if (response) {
+          console.log('RESPONSE 96', response);
           return response;
         } else {
           return fetch(event.request)
             .then((res) => {
+              console.log('res', res);
               return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-                cache.put(event.request.url, res.clone());
+                if ('POST' !== event.request.method) {
+                  cache.put(event.request.url, res.clone());
+                }
+                //cache.put(event.request.url, res.clone());
+                console.log('cache', cache);
                 return res;
               });
             })
             .catch((err) => {
+              console.log('error', err);
               return caches.open(CACHE_STATIC_NAME).then((cache) => {
                 if (event.request.headers.get('accept').includes('text/html')) {
                   return cache.match('/offline.html');
@@ -133,137 +124,97 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-self.addEventListener('sync', (e) => {
-  console.log('[Service Worker] Background syncing', e);
-  if (e.tag === 'sync-new-posts') {
-    console.log('[Service Worker] Syncing new Posts');
-    e.waitUntil(
-      readAllData('sync-posts').then((data) => {
-        for (var dt of data) {
-          fetch(
-            'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-              },
-              body: JSON.stringify({
-                id: dt.id,
-                title: dt.title,
-                location: dt.location,
-                image:
-                  'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-              }),
-            }
-          )
-            .then((res) => {
-              console.log('Sent data', res);
-              if (res.ok) {
-                res.json().then((resData) => {
-                  deleteItemFromData('sync-posts', resData.id);
-                });
-              }
-            })
-            .catch((err) => {
-              console.log('Error while sending data', err);
-            });
-        }
-      })
-    );
-  }
-});
+//self.addEventListener('sync', (event) => {
+//  console.log('[Service Worker] Background syncing', event);
+//  if (event.tag === 'sync-new-posts') {
+//    console.log('[Service Worker] Syncing new Posts');
+//    event.waitUntil(
+//      readAllData('sync-posts').then((data) => {
+//        for (var dt of data) {
+//          var postData = new FormData();
+//          postData.append('id', dt.id);
+//          postData.append('title', dt.title);
+//          postData.append('location', dt.location);
+//          postData.append('rawLocationLat', dt.rawLocation.lat);
+//          postData.append('rawLocationLng', dt.rawLocation.lng);
+//          postData.append('file', dt.picture, dt.id + '.png');
 
-self.addEventListener('notificationclick', (e) => {
-  var notification = e.notification;
-  var action = e.action;
-  console.log(notification);
-  if (action === 'confirm') {
-    console.log('Confirm was chosen');
-    notification.close();
-  } else {
-    console.log(action);
-    e.waitUntil(
-      clients.matchAll().then((clis) => {
-        var client = clis.find((c) => {
-          return c.visibilityState === 'visible';
-        });
-        if (client !== undefined) {
-          client.navigate(notification.data.url);
-          client.focus();
-        } else {
-          clients.openWindow(notification.data.url);
-        }
-        notification.close();
-      })
-    );
-  }
-});
+//          fetch(
+//            'https://us-central1-pwa-udemy-68dcb.cloudfunctions.net/storePostData',
+//            {
+//              method: 'POST',
+//              body: postData,
+//            }
+//          )
+//            .then((res) => {
+//              console.log('Sent data', res);
+//              if (res.ok) {
+//                res.json().then((resData) => {
+//                  deleteItemFromData('sync-posts', resData.id);
+//                });
+//              }
+//            })
+//            .catch((err) => {
+//              console.log('Error while sending data', err);
+//            });
+//        }
+//      })
+//    );
+//  }
+//});
 
-self.addEventListener('notificationclose', (e) => {
-  console.log('Notification was closed', e);
-});
+//self.addEventListener('notificationclick', (event) => {
+//  var notification = event.notification;
+//  var action = event.action;
+//  console.log(notification);
+//  if (action === 'confirm') {
+//    console.log('Confirm was chosen');
+//    notification.close();
+//  } else {
+//    console.log(action);
+//    event.waitUntil(
+//      clients.matchAll().then((clis) => {
+//        var client = clis.find((c) => {
+//          return c.visibilityState === 'visible';
+//        });
+//        if (client !== undefined) {
+//          client.navigate(notification.data.url);
+//          client.focus();
+//        } else {
+//          clients.openWindow(notification.data.url);
+//        }
+//        notification.close();
+//      })
+//    );
+//  }
+//});
 
-self.addEventListener('push', (e) => {
-  console.log('Push Notification received', e);
+//self.addEventListener('notificationclose', (event) => {
+//  console.log('Notification was closed', event);
+//});
 
-  var data = {
-    title: 'New!',
-    content: 'Something new happened!',
-    openUrl: '/',
-  };
+//self.addEventListener('push', (event) => {
+//  console.log('Push Notification received', event);
 
-  if (e.data) {
-    data = JSON.parse(e.data.text());
-  }
+//  var data = {
+//    title: 'New!',
+//    content: 'Something new happened!',
+//    openUrl: '/',
+//  };
 
-  var options = {
-    body: data.content,
-    icon: '/src/images/icons/app-icon-96x96.png',
-    badge: '/src/images/icons/app-icon-96x96.png',
-    data: {
-      url: data.openUrl,
-    },
-  };
+//  if (event.data) {
+//    data = JSON.parse(event.data.text());
+//  }
 
-  e.waitUntil(self.registration.showNotification(data.title, options));
-});
-
-//self.addEventListener('sync', (e) => {
-//	console.log('[SERVICE WORKER] Background syncing', e);
-
-//	if (e.tag === 'sync-new-posts') {
-//		console.log('[SERVICE WORKER] Syncing new Posts');
-//		e.waitUntil(
-//			readAllData('sync-posts').then((data) => {
-//				for (var dt of data) {
-//					fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
-//						method: 'POST',
-//						headers: {
-//							'Content-Type': 'application/json',
-//							Accept: 'application/json',
-//						},
-//						body: JSON.stringify({
-//							id: dt.id,
-//							title: dt.title,
-//							location: dt.location,
-//							image:
-//								'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
-//						}),
-//					})
-//						.then((res) => {
-//							console.log('Sent data', res);
-//							if (res.ok) {
-//								deleteItemFromData('sync-posts', dt.id);
-//							}
-//						})
-//						.catch((err) => {
-//							console.log('Error while sending data', err);
-//						});
-//				}
-//			})
-//		);
-//	}
+//  var options = {
+//    body: data.content,
+//    icon: '/src/images/icons/app-icon-96x96.png',
+//    badge: '/src/images/icons/app-icon-96x96.png',
+//    data: {
+//      url: data.openUrl,
+//    },
+//  };
+//  event.waitUntil(self.registration.showNotification(data.title, options));
 //});
 
 //OLD CODE
@@ -369,4 +320,58 @@ self.addEventListener('push', (e) => {
 //network only strategy
 //self.addEventListener('fetch', (e) => {
 //	e.respondWith(fetch(e.request));
+//});
+
+//function trimCache(cacheName, maxItems) {
+//	caches.open(cacheName).then((cache) => {
+//		cache.keys().then((keys) => {
+//			if (keys.length > maxItems) {
+//				cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
+//			}
+//		});
+//	});
+//}
+//function isInArray(string, array) {
+//	for (var i = 0; i < array.length; i++) {
+//		if (array[i] === string) {
+//			return true;
+//		}
+//	}
+//}
+
+//self.addEventListener('sync', (e) => {
+//	console.log('[SERVICE WORKER] Background syncing', e);
+
+//	if (e.tag === 'sync-new-posts') {
+//		console.log('[SERVICE WORKER] Syncing new Posts');
+//		e.waitUntil(
+//			readAllData('sync-posts').then((data) => {
+//				for (var dt of data) {
+//					fetch('https://pwa-udemy-68dcb.firebaseio.com/posts.json', {
+//						method: 'POST',
+//						headers: {
+//							'Content-Type': 'application/json',
+//							Accept: 'application/json',
+//						},
+//						body: JSON.stringify({
+//							id: dt.id,
+//							title: dt.title,
+//							location: dt.location,
+//							image:
+//								'https://firebasestorage.googleapis.com/v0/b/pwa-udemy-68dcb.appspot.com/o/sf-boat.jpg?alt=media&token=932e3373-f395-4ad4-968d-bc874662f8c0',
+//						}),
+//					})
+//						.then((res) => {
+//							console.log('Sent data', res);
+//							if (res.ok) {
+//								deleteItemFromData('sync-posts', dt.id);
+//							}
+//						})
+//						.catch((err) => {
+//							console.log('Error while sending data', err);
+//						});
+//				}
+//			})
+//		);
+//	}
 //});
