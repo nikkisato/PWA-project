@@ -10,7 +10,7 @@ if (!window.Promise) {
 //Checking if service worker is available
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker
-    .register('/sw.js')
+    .register('/service-worker.js')
     .then(() => {
       console.log('Service worker registered!');
     })
